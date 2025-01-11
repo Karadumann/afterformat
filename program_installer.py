@@ -32,6 +32,8 @@ class ProgramInstaller:
                 "select_all": "Tümünü Seç",
                 "deselect_all": "Tümünü Kaldır",
                 "downloading": "İndiriliyor...",
+                "download_speed": "İndirme Hızı:",
+                "remaining_time": "Kalan Süre:",
                 "categories": {
                     "browsers": "Tarayıcılar",
                     "communication": "İletişim",
@@ -56,6 +58,8 @@ class ProgramInstaller:
                 "select_all": "Select All",
                 "deselect_all": "Deselect All",
                 "downloading": "Downloading...",
+                "download_speed": "Download Speed:",
+                "remaining_time": "Time Remaining:",
                 "categories": {
                     "browsers": "Browsers",
                     "communication": "Communication",
@@ -183,26 +187,61 @@ class ProgramInstaller:
         
     def download_file(self, url, filename):
         try:
-            response = requests.get(url, stream=True)
+            session = requests.Session()
+            response = session.get(url, stream=True)
             response.raise_for_status()
             
             filepath = os.path.join(self.download_folder, filename)
+            total_size = int(response.headers.get('content-length', 0))
+            
+            if hasattr(self, 'progress_var'):
+                self.progress_var.set(0)
+            
+            block_size = 1024 * 1024  # 1MB blocks
+            downloaded = 0
+            start_time = time.time()
+            update_interval = 0.1  # Update UI every 0.1 seconds
+            last_update = 0
             
             with open(filepath, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
+                for chunk in response.iter_content(chunk_size=block_size):
                     if chunk:
                         f.write(chunk)
+                        downloaded += len(chunk)
+                        
+                        current_time = time.time()
+                        if (current_time - last_update) >= update_interval:
+                            if hasattr(self, 'progress_var') and hasattr(self, 'speed_label'):
+                                elapsed_time = current_time - start_time
+                                if elapsed_time > 0:
+                                    speed = downloaded / (1024 * 1024 * elapsed_time)
+                                    if total_size > 0:
+                                        progress = (downloaded / total_size) * 100
+                                        self.progress_var.set(progress)
+                                        remaining = (total_size - downloaded) / (downloaded / elapsed_time)
+                                        
+                                        self.speed_label.config(
+                                            text=f"{self.get_text('download_speed')} {speed:.1f} MB/s"
+                                        )
+                                        self.time_label.config(
+                                            text=f"{self.get_text('remaining_time')} {int(remaining)}s"
+                                        )
+                                    
+                                    self.root.update_idletasks()
+                                    last_update = current_time
             
+            session.close()
             return True, filepath
         except Exception as e:
             return False, str(e)
     
     def run_installer(self, filepath, program_name):
         try:
-            subprocess.Popen(filepath)
+            subprocess.Popen([filepath], shell=True)
             print(f"Setup started: {program_name}")
         except Exception as e:
             print(f"Setup start error ({program_name}): {str(e)}")
+            messagebox.showerror("Hata", f"Program başlatılamadı: {program_name}\nHata: {str(e)}")
     
     def download_selected_programs(self):
         selected = [prog for prog, var in self.checkboxes.items() if var.get()]
@@ -290,8 +329,25 @@ class ProgramInstaller:
                                     command=self.deselect_all)
         deselect_all_btn.grid(row=0, column=3, padx=5)
         
+        progress_frame = ttk.Frame(self.main_frame)
+        progress_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
+        
+        self.progress_var = tk.DoubleVar()
+        self.progress = ttk.Progressbar(progress_frame, 
+                                      orient="horizontal",
+                                      length=300,
+                                      mode="determinate",
+                                      variable=self.progress_var)
+        self.progress.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5)
+        
+        self.speed_label = ttk.Label(progress_frame, text="")
+        self.speed_label.grid(row=1, column=0, sticky=tk.W)
+        
+        self.time_label = ttk.Label(progress_frame, text="")
+        self.time_label.grid(row=2, column=0, sticky=tk.W)
+        
         self.notebook = ttk.Notebook(self.main_frame)
-        self.notebook.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
+        self.notebook.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
         
         self.checkboxes = {}
         
@@ -311,7 +367,7 @@ class ProgramInstaller:
                                         text=self.get_text("download_button"),
                                         command=self.download_selected_programs,
                                         style="Download.TButton")
-        self.download_button.grid(row=2, column=0, pady=20)
+        self.download_button.grid(row=3, column=0, pady=20)
 
 if __name__ == "__main__":
     root = tk.Tk()
