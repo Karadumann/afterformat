@@ -12,6 +12,7 @@ import time
 class ProgramInstaller:
     def __init__(self, root):
         self.root = root
+        self.version = "1.0.0"
         self.current_language = "tr"
         self.download_folder = str(Path.home() / "Downloads" / "Program_Installer")
         
@@ -174,7 +175,7 @@ class ProgramInstaller:
                     "direct_download": False
                 }
         
-        self.root.title(self.get_text("title"))
+        self.root.title(f"{self.get_text('title')} v{self.version}")
         self.root.geometry("1000x800")
         
         style = ttk.Style()
