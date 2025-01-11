@@ -98,20 +98,20 @@ class ProgramInstaller:
                     "filename": "7zip_Setup.exe"
                 },
                 "Internet Download Manager": {
-                    "url": "https://drive.google.com/file/d/15rEhQFVCPfwiro_zvmTgI0OS9XO0CtT7/view?usp=sharing",
-                    "direct_download": False
+                    "url": "https://drive.usercontent.google.com/download?id=15rEhQFVCPfwiro_zvmTgI0OS9XO0CtT7&export=download&authuser=0&confirm=t&uuid=9c132578-086c-4aa3-b29f-51e6c3c8f5bb&at=AIrpjvMzLmf2LSezOT7tnu-TCH9K%3A1736602074815",
+                    "direct_download": True
                 },
                 "AnyDesk Full Version": {
-                    "url": "https://drive.google.com/file/d/1Xe-Tuad2gq1zEn-VE5eiNEQ5EF8rnFaK/view?usp=sharing",
-                    "direct_download": False
+                    "url": "https://drive.usercontent.google.com/download?id=1Xe-Tuad2gq1zEn-VE5eiNEQ5EF8rnFaK&export=download&authuser=0&confirm=t&uuid=fcefe3c0-136b-4b63-a779-859ef580de9a&at=AIrpjvNDOPdVylNSuBlb1papPMKc%3A1736602155234",
+                    "direct_download": True
                 },
                 "Traffic Monitor": {
-                    "url": "https://drive.google.com/file/d/1-MreAWdLb2UPzTfWIZjE2qJLQxgVHeou/view?usp=sharing",
-                    "direct_download": False
+                    "url": "https://drive.usercontent.google.com/download?id=1-MreAWdLb2UPzTfWIZjE2qJLQxgVHeou&export=download&authuser=0",
+                    "direct_download": True
                 },
                 "DirectX & Redist Package": {
-                    "url": "https://drive.google.com/file/d/11KyIrairbxD9qSBphZ9JTyp5j-yOMDr5/view?usp=sharing",
-                    "direct_download": False
+                    "url": "https://drive.usercontent.google.com/download?id=11KyIrairbxD9qSBphZ9JTyp5j-yOMDr5&export=download&authuser=0&confirm=t&uuid=43e62fd1-fb14-4f70-a8c5-205aa575491a&at=AIrpjvPyYUYIqqp82pIm0NTXzKMG%3A1736602253037",
+                    "direct_download": True
                 },
                 "NVIDIA GeForce Experience": {
                     "url": "https://us.download.nvidia.com/GFE/GFEClient/3.27.0.112/GeForce_Experience_v3.27.0.112.exe",
@@ -119,7 +119,7 @@ class ProgramInstaller:
                     "filename": "GeForce_Experience_Setup.exe"
                 },
                 "Windows & Office Activator": {
-                    "url": "https://drive.google.com/file/d/1VxCd9LKAY6VKG7DuP0ClEi-35TFCDYpn/view?usp=sharing",
+                    "url": "https://drive.usercontent.google.com/download?id=1VxCd9LKAY6VKG7DuP0ClEi-35TFCDYpn&export=download&authuser=0",
                     "direct_download": False
                 }
             },
@@ -139,41 +139,95 @@ class ProgramInstaller:
         
         self.web_redirect_programs = {
             "communication": {
-                "Discord": "https://discord.com/download",
-                "Discord Canary": "https://discord.com/download/canary",
-                "Discord PTB": "https://discord.com/download/ptb",
-                "WhatsApp Desktop": "https://www.whatsapp.com/download",
-                "Telegram Desktop": "https://desktop.telegram.org/",
-                "Zoom": "https://zoom.us/download"
+                "Discord": {
+                    "url": "https://discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x64",
+                    "direct_download": True,
+                    "filename": "Discord_Setup.exe"
+                },
+                "Discord Canary": {
+                    "url": "https://canary.discord.com/api/downloads/distributions/app/installers/latest?channel=stable&platform=win&arch=x64",
+                    "direct_download": True,
+                    "filename": "Discord_Canary_Setup.exe"
+                },
+                "Discord PTB": {
+                    "url": "https://discord.com/api/download/ptb?platform=win",
+                    "direct_download": True,
+                    "filename": "Discord_PTB_Setup.exe"
+                },
+                "WhatsApp Desktop": {
+                    "url": "https://get.microsoft.com/installer/download/9NKSQGP7F2NH?cid=website_cta_psi",
+                    "direct_download": True,
+                    "filename": "WhatsApp_Setup.exe"
+                },
+                "Telegram Desktop": {
+                    "url": "https://telegram.org/dl/desktop/win64",
+                    "direct_download": True,
+                    "filename": "Telegram_Setup.exe"
+                },
+                "Zoom": {
+                    "url": "https://zoom.us/client/6.3.5.54827/ZoomInstallerFull.exe?archType=x64",
+                    "direct_download": True,
+                    "filename": "Zoom_Setup.exe"
+                }
             },
             "multimedia": {
-                "VLC Media Player": "https://www.videolan.org/vlc/",
-                "Spotify": "https://www.spotify.com/download/",
-                "HandBrake": "https://handbrake.fr/downloads.php",
-                "Iriun Webcam": "https://iriun.com/"
+                "VLC Media Player": {
+                    "url": "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.exe",
+                    "direct_download": True,
+                    "filename": "VLC_Setup.exe"
+                },
+                "Spotify": {
+                    "url": "https://download.scdn.co/SpotifySetup.exe",
+                    "direct_download": True,
+                    "filename": "Spotify_Setup.exe"
+                },
+                "HandBrake": {
+                    "url": "https://handbrake.fr/rotation.php?file=HandBrake-1.9.0-x86_64-Win_GUI.exe",
+                    "direct_download": True,
+                    "filename": "HandBrake_Setup.exe"
+                },
+                "Iriun Webcam": {
+                    "url": "https://1758658189.rsc.cdn77.org/IriunWebcam-2.8.10.exe",
+                    "direct_download": True,
+                    "filename": "IriunWebcam_Setup.exe"
+                }
             },
             "gaming": {
-                "Steam": "https://store.steampowered.com/about/",
-                "Riot Games": "https://www.riotgames.com/",
-                "Razer Synapse": "https://www.razer.com/synapse-3",
-                "Vencord": "https://drive.google.com/file/d/15073q_Wh6nddbYR-mflm-pUgmvCHUVJj/view?usp=sharing"
+                "Steam": {
+                    "url": "https://cdn.fastly.steamstatic.com/client/installer/SteamSetup.exe",
+                    "direct_download": True,
+                    "filename": "Steam_Setup.exe"
+                },
+                "Riot Games": {
+                    "url": "https://valorant.secure.dyn.riotcdn.net/channels/public/x/installer/current/live.live.ap.exe",
+                    "direct_download": True,
+                    "filename": "RiotGames_Setup.exe"
+                }
             },
             "security": {
-                "NetBird": "https://netbird.io/downloads",
-                "Password Safe": "https://pwsafe.org/download.shtml",
-                "Nextcloud": "https://nextcloud.com/install/",
-                "Flameshot": "https://flameshot.org/"
+                "NetBird": {
+                    "url": "https://pkgs.netbird.io/windows/x64",
+                    "direct_download": True,
+                    "filename": "NetBird_Setup.exe"
+                },
+                "Password Safe": {
+                    "url": "https://github.com/pwsafe/pwsafe/releases/download/3.67.0/pwsafe-3.67.0.exe",
+                    "direct_download": True,
+                    "filename": "PasswordSafe_Setup.exe"
+                },
+                "Flameshot": {
+                    "url": "https://github.com/flameshot-org/flameshot/releases/download/v12.1.0/Flameshot-12.1.0-win64.msi",
+                    "direct_download": True,
+                    "filename": "Flameshot_Setup.msi"
+                }
             }
         }
         
         for category, programs in self.web_redirect_programs.items():
             if category not in self.categorized_programs:
                 self.categorized_programs[category] = {}
-            for program, url in programs.items():
-                self.categorized_programs[category][program] = {
-                    "url": url,
-                    "direct_download": False
-                }
+            for program, info in programs.items():
+                self.categorized_programs[category][program] = info
         
         self.root.title(f"{self.get_text('title')} v{self.version}")
         self.root.geometry("1000x800")
