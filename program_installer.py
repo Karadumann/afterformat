@@ -152,10 +152,10 @@ class ProgramInstaller:
                     "filename": "TrafficMonitor_Setup.exe",
                     "icon_url": "https://cdn-icons-png.flaticon.com/128/1527/1527814.png"
                 },
-                "DirectX & Redist Package": {
-                    "url": "https://drive.usercontent.google.com/download?id=11KyIrairbxD9qSBphZ9JTyp5j-yOMDr5&export=download&authuser=0&confirm=t&uuid=43e62fd1-fb14-4f70-a8c5-205aa575491a&at=AIrpjvPyYUYIqqp82pIm0NTXzKMG%3A1736602253037",
+                "Visual-C-Runtimes-All-in-One-May-2024": {
+                    "url": "https://drive.usercontent.google.com/download?id=1ner-ddYc8vRm__4egUHR71RxbIiOEWfJ&export=download&authuser=0&confirm=t&uuid=5a7c8796-ca25-45f9-b31f-836e70908ee8&at=AIrpjvNMaqyv3UJ1QZJfCQZBlfwZ%3A1736717952335",
                     "direct_download": True,
-                    "filename": "DirectX_Setup.exe",
+                    "filename": "Visual_C_Runtimes_Setup.zip",
                     "icon_url": "https://cdn-icons-png.flaticon.com/128/5968/5968705.png"
                 },
                 "NVIDIA GeForce Experience": {
@@ -360,8 +360,31 @@ class ProgramInstaller:
                 self.get_text("installing")
             )
             
-            process = subprocess.Popen([filepath], shell=True)
-            process.wait(timeout=5)  # 5 saniye bekle
+            # Visual C++ Runtimes için özel işlem
+            if "Visual_C_Runtimes" in filepath:
+                import zipfile
+                import shutil
+                
+                # Zip dosyasını çıkar
+                extract_path = os.path.join(os.path.dirname(filepath), "VC_Runtimes")
+                with zipfile.ZipFile(filepath, 'r') as zip_ref:
+                    zip_ref.extractall(extract_path)
+                
+                # Install.cmd dosyasını bul ve çalıştır
+                install_cmd = os.path.join(extract_path, "Install.cmd")
+                if os.path.exists(install_cmd):
+                    process = subprocess.Popen([install_cmd], shell=True, cwd=extract_path)
+                    process.wait(timeout=5)
+                    
+                    # Temizlik
+                    try:
+                        shutil.rmtree(extract_path)
+                    except:
+                        pass
+            else:
+                # Diğer programlar için normal kurulum
+                process = subprocess.Popen([filepath], shell=True)
+                process.wait(timeout=5)
             
             self.update_download_progress(
                 program_name,
