@@ -134,6 +134,12 @@ class ProgramInstaller:
                     "filename": "7zip_Setup.exe",
                     "icon_url": "https://www.techspot.com/images2/downloads/topdownload/2014/06/7zip.png"
                 },
+                "Adobe Acrobat Pro": {
+                    "url": "https://drive.usercontent.google.com/download?id=1WsYodIJjPV8wGKMEVdSVe3Ppn7lpkTvZ&export=download&authuser=0&confirm=t&uuid=b366c5a8-5eef-48cc-b2b1-9da0f8115d72&at=AIrpjvMZmnfsnTTjj6091bu-9OS3%3A1736720866704",
+                    "direct_download": True,
+                    "filename": "Adobe_Acrobat_Pro_Setup.exe",
+                    "icon_url": "https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/7249df06-bcfe-46a1-9dfd-441d86aa80d3.png?w=80&h=80&fit=max&dpr=3&auto=format&q=50"
+                },
                 "Internet Download Manager": {
                     "url": "https://drive.usercontent.google.com/download?id=15rEhQFVCPfwiro_zvmTgI0OS9XO0CtT7&export=download&authuser=0&confirm=t&uuid=9c132578-086c-4aa3-b29f-51e6c3c8f5bb&at=AIrpjvMzLmf2LSezOT7tnu-TCH9K%3A1736602074815",
                     "direct_download": True,
@@ -189,6 +195,12 @@ class ProgramInstaller:
                     "direct_download": True,
                     "filename": "VencordInstaller.exe",
                     "icon_url": "https://cdn-b.saashub.com/images/app/service_logos/257/esea491td7cs/large.png?1690800055"
+                },
+                "MySQL Workbench": {
+                    "url": "https://dev.mysql.com/get/Downloads/MySQLGUITools/mysql-workbench-community-8.0.40-winx64.msi",
+                    "direct_download": True,
+                    "filename": "MySQL_Workbench_Setup.msi",
+                    "icon_url": "https://d1.awsstatic.com/asset-repository/products/amazon-rds/1024px-MySQL.ff87215b43fd7292af172e2a5d9b844217262571.png"
                 }
             }
         }
@@ -238,6 +250,12 @@ class ProgramInstaller:
                     "direct_download": True,
                     "filename": "VLC_Setup.exe",
                     "icon_url": "https://cdn-icons-png.flaticon.com/128/8728/8728427.png"
+                },
+                "Adobe Photoshop 2024": {
+                    "url": "https://drive.usercontent.google.com/download?id=1VQtbETlwihOQf38PhotzD9snTP_gB8P-&export=download&authuser=0&confirm=t&uuid=4cca7b0a-ca41-489b-8d5a-0707c274f576&at=AIrpjvNifpyKanoEJvSrmxXvITHz%3A1736720773323",
+                    "direct_download": True,
+                    "filename": "Adobe_Photoshop_2024_Setup.exe",
+                    "icon_url": "https://yt3.googleusercontent.com/ytc/AIdro_keG95kcun6Bg2BCPgHNt0b7Gi9ST3ylBP_xE9NM2RfVNqK=s900-c-k-c0x00ffffff-no-rj"
                 },
                 "Spotify": {
                     "url": "https://download.scdn.co/SpotifySetup.exe",
