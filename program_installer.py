@@ -16,7 +16,7 @@ class ProgramInstaller:
     def __init__(self, root):
         self.root = root
         self.version = "1.1.0"
-        self.current_language = "tr"
+        self.current_language = "en"
         self.download_folder = str(Path.home() / "Downloads" / "Program_Installer")
         self.icon_cache_folder = os.path.join(self.download_folder, "icons")
         self.icon_cache = {}
