@@ -183,6 +183,12 @@ class ProgramInstaller:
                     "direct_download": True,
                     "filename": "Notepad_Plus_Plus_Setup.exe",
                     "icon_url": "https://www.kaldata.com/wp-content/uploads/2016/11/notepad.jpg"
+                },
+                "Vencord": {
+                    "url": "https://github.com/Vencord/Installer/releases/latest/download/VencordInstaller.exe",
+                    "direct_download": True,
+                    "filename": "VencordInstaller.exe",
+                    "icon_url": "https://cdn-b.saashub.com/images/app/service_logos/257/esea491td7cs/large.png?1690800055"
                 }
             }
         }
