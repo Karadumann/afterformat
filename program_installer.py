@@ -29,7 +29,7 @@ class ProgramInstaller:
         self.download_queue = []
         self.current_downloads = []
         self.max_concurrent_downloads = 3
-        self.queue_lock = Lock()  # Thread güvenliği için kilit eklendi
+        self.queue_lock = Lock()  
         
         self.translations = {
             "tr": {
@@ -355,10 +355,8 @@ class ProgramInstaller:
                         
                         elapsed = current_time - last_update_time
                         if elapsed >= 0.5:  # Her 0.5 saniyede bir güncelle
-                            # Sıfıra bölünmeyi önle ve MB/s hesapla
                             speed = (downloaded - last_downloaded) / (1024 * 1024 * max(elapsed, 0.001))
                             
-                            # Dosya boyutu bilinmiyorsa belirsiz ilerleme göster
                             if total_size > 0:
                                 progress = (downloaded / total_size * 100)
                             else:
@@ -400,7 +398,6 @@ class ProgramInstaller:
                 self.get_text("installing")
             )
             
-            # Kurulum için timeout süresini belirle
             timeout = 60  # Genel kurulumlar için 60 saniye
             if "Visual_C_Runtimes" in filepath:
                 timeout = 120  # VC++ Runtimes için daha uzun süre
@@ -429,7 +426,6 @@ class ProgramInstaller:
                             self.get_text("installed")
                         )
                     except subprocess.TimeoutExpired:
-                        # Timeout oldu ama kurulum devam ediyor olabilir
                         self.update_download_progress(
                             program_name,
                             self.get_text("completed"),
@@ -456,7 +452,6 @@ class ProgramInstaller:
                         self.get_text("installed")
                     )
                 except subprocess.TimeoutExpired:
-                    # Timeout oldu ama kurulum devam ediyor
                     self.update_download_progress(
                         program_name,
                         self.get_text("completed"),
@@ -490,31 +485,61 @@ class ProgramInstaller:
         icon_hash = hashlib.md5(icon_url.encode()).hexdigest()
         icon_path = os.path.join(self.icon_cache_folder, f"{icon_hash}.png")
         
+        # Önbellek boyutu kontrolü
+        MAX_CACHE_SIZE = 50
+        if len(self.icon_cache) > MAX_CACHE_SIZE:
+            # En eski öğeleri kaldır
+            oldest_keys = list(self.icon_cache.keys())[:len(self.icon_cache) - MAX_CACHE_SIZE]
+            for key in oldest_keys:
+                del self.icon_cache[key]
+                try:
+                    old_icon_path = os.path.join(self.icon_cache_folder, f"{key}.png")
+                    if os.path.exists(old_icon_path):
+                        os.remove(old_icon_path)
+                except Exception as e:
+                    print(f"Icon cleanup error: {str(e)}")
+        
+        # Önbellekten yükle
         if icon_hash in self.icon_cache:
             return self.icon_cache[icon_hash]
             
+        # Disk önbelleğinden yükle
         if os.path.exists(icon_path):
             try:
                 img = Image.open(icon_path)
-                img = img.convert('RGBA')  # RGBA formatına dönüştür
+                img = img.convert('RGBA')
                 img = img.resize((24, 24), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 self.icon_cache[icon_hash] = photo
                 return photo
             except Exception as e:
                 print(f"Icon load error: {str(e)}")
+                try:
+                    # Bozuk ikon dosyasını sil
+                    os.remove(icon_path)
+                except:
+                    pass
                 return None
                 
+        # İnternetten yükle
         try:
-            response = requests.get(icon_url)
-            response.raise_for_status()  # HTTP hataları için kontrol
+            response = requests.get(icon_url, timeout=10)  # 10 saniyelik timeout ekle
+            response.raise_for_status()
+            
             img = Image.open(BytesIO(response.content))
-            img = img.convert('RGBA')  # RGBA formatına dönüştür
+            img = img.convert('RGBA')
             img = img.resize((24, 24), Image.Resampling.LANCZOS)
-            img.save(icon_path, 'PNG')
+            
+            # Disk önbelleğine kaydet
+            try:
+                img.save(icon_path, 'PNG')
+            except Exception as e:
+                print(f"Icon save error: {str(e)}")
+            
             photo = ImageTk.PhotoImage(img)
             self.icon_cache[icon_hash] = photo
             return photo
+            
         except Exception as e:
             print(f"Icon download error: {str(e)}")
             return None
