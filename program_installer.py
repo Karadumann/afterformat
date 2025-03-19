@@ -7,6 +7,7 @@ import subprocess
 from tkinter import messagebox
 from pathlib import Path
 import threading
+from threading import Lock
 import time
 from PIL import Image, ImageTk
 from io import BytesIO
@@ -28,6 +29,7 @@ class ProgramInstaller:
         self.download_queue = []
         self.current_downloads = []
         self.max_concurrent_downloads = 3
+        self.queue_lock = Lock()  # Thread güvenliği için kilit eklendi
         
         self.translations = {
             "tr": {
@@ -336,7 +338,7 @@ class ProgramInstaller:
             response.raise_for_status()
             
             filepath = os.path.join(self.download_folder, filename)
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(response.headers.get('content-length', -1))
             
             block_size = 1024 * 1024  # 1MB blocks
             downloaded = 0
@@ -351,16 +353,24 @@ class ProgramInstaller:
                         downloaded += len(chunk)
                         current_time = time.time()
                         
-                        # Her 0.5 saniyede bir güncelle
-                        if current_time - last_update_time >= 0.5:
-                            elapsed = current_time - last_update_time
-                            speed = (downloaded - last_downloaded) / (1024 * 1024 * elapsed)  # MB/s
-                            progress = (downloaded / total_size * 100) if total_size > 0 else 0
+                        elapsed = current_time - last_update_time
+                        if elapsed >= 0.5:  # Her 0.5 saniyede bir güncelle
+                            # Sıfıra bölünmeyi önle ve MB/s hesapla
+                            speed = (downloaded - last_downloaded) / (1024 * 1024 * max(elapsed, 0.001))
+                            
+                            # Dosya boyutu bilinmiyorsa belirsiz ilerleme göster
+                            if total_size > 0:
+                                progress = (downloaded / total_size * 100)
+                            else:
+                                progress = -1
+                            
+                            display_progress = progress if progress >= 0 else None
+                            program_name = os.path.splitext(filename)[0].replace("_Setup", "")
                             
                             self.update_download_progress(
-                                os.path.splitext(filename)[0].replace("_Setup", ""),
+                                program_name,
                                 self.get_text("downloading"),
-                                progress,
+                                display_progress,
                                 speed
                             )
                             
@@ -371,8 +381,14 @@ class ProgramInstaller:
             
             session.close()
             return True, filepath
+        except requests.exceptions.RequestException as e:
+            error_msg = f"Download error: {str(e)}"
+            print(error_msg)
+            return False, error_msg
         except Exception as e:
-            return False, str(e)
+            error_msg = f"Unexpected error: {str(e)}"
+            print(error_msg)
+            return False, error_msg
     
     def run_installer(self, filepath, program_name):
         try:
@@ -383,6 +399,11 @@ class ProgramInstaller:
                 0,
                 self.get_text("installing")
             )
+            
+            # Kurulum için timeout süresini belirle
+            timeout = 60  # Genel kurulumlar için 60 saniye
+            if "Visual_C_Runtimes" in filepath:
+                timeout = 120  # VC++ Runtimes için daha uzun süre
             
             # Visual C++ Runtimes için özel işlem
             if "Visual_C_Runtimes" in filepath:
@@ -398,37 +419,57 @@ class ProgramInstaller:
                 install_cmd = os.path.join(extract_path, "Install.cmd")
                 if os.path.exists(install_cmd):
                     process = subprocess.Popen([install_cmd], shell=True, cwd=extract_path)
-                    process.wait(timeout=5)
+                    try:
+                        process.wait(timeout=timeout)
+                        self.update_download_progress(
+                            program_name,
+                            self.get_text("completed"),
+                            100,
+                            0,
+                            self.get_text("installed")
+                        )
+                    except subprocess.TimeoutExpired:
+                        # Timeout oldu ama kurulum devam ediyor olabilir
+                        self.update_download_progress(
+                            program_name,
+                            self.get_text("completed"),
+                            100,
+                            0,
+                            self.get_text("installing")
+                        )
                     
                     # Temizlik
                     try:
                         shutil.rmtree(extract_path)
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"Cleanup error for {program_name}: {str(e)}")
             else:
                 # Diğer programlar için normal kurulum
                 process = subprocess.Popen([filepath], shell=True)
-                process.wait(timeout=5)
+                try:
+                    process.wait(timeout=timeout)
+                    self.update_download_progress(
+                        program_name,
+                        self.get_text("completed"),
+                        100,
+                        0,
+                        self.get_text("installed")
+                    )
+                except subprocess.TimeoutExpired:
+                    # Timeout oldu ama kurulum devam ediyor
+                    self.update_download_progress(
+                        program_name,
+                        self.get_text("completed"),
+                        100,
+                        0,
+                        self.get_text("installing")
+                    )
             
-            self.update_download_progress(
-                program_name,
-                self.get_text("completed"),
-                100,
-                0,
-                self.get_text("installed")
-            )
             print(f"Setup started: {program_name}")
-        except subprocess.TimeoutExpired:
-            # Timeout olması normal, kurulum devam ediyor demektir
-            self.update_download_progress(
-                program_name,
-                self.get_text("completed"),
-                100,
-                0,
-                self.get_text("installed")
-            )
+            
         except Exception as e:
-            print(f"Setup start error ({program_name}): {str(e)}")
+            error_msg = str(e)
+            print(f"Setup error ({program_name}): {error_msg}")
             self.update_download_progress(
                 program_name,
                 self.get_text("completed"),
@@ -436,7 +477,10 @@ class ProgramInstaller:
                 0,
                 self.get_text("install_failed")
             )
-            messagebox.showerror("Hata", f"Program başlatılamadı: {program_name}\nHata: {str(e)}")
+            messagebox.showerror(
+                self.get_text("error"),  # Çevirisi olan başlık kullan
+                f"{self.get_text('install_failed')}: {program_name}"
+            )
     
     def load_program_icon(self, program_info):
         if 'icon_url' not in program_info:
@@ -477,21 +521,24 @@ class ProgramInstaller:
 
     def pause_download(self, program_name):
         # İndirmeyi duraklat
-        if program_name in self.current_downloads:
-            self.current_downloads.remove(program_name)
-            self.download_queue.insert(0, program_name)
+        with self.queue_lock:
+            if program_name in self.current_downloads:
+                self.current_downloads.remove(program_name)
+                self.download_queue.insert(0, program_name)
             
     def resume_download(self, program_name):
         # İndirmeyi devam ettir
-        if program_name in self.download_queue:
-            self.download_queue.remove(program_name)
-            self.process_download_queue()
+        with self.queue_lock:
+            if program_name in self.download_queue:
+                self.download_queue.remove(program_name)
+                self.process_download_queue()
 
     def process_download_queue(self):
-        while len(self.current_downloads) < self.max_concurrent_downloads and self.download_queue:
-            program = self.download_queue.pop(0)
-            self.current_downloads.append(program)
-            threading.Thread(target=self.download_program, args=(program,), daemon=True).start()
+        with self.queue_lock:
+            while len(self.current_downloads) < self.max_concurrent_downloads and self.download_queue:
+                program = self.download_queue.pop(0)
+                self.current_downloads.append(program)
+                threading.Thread(target=self.download_program, args=(program,), daemon=True).start()
 
     def download_program(self, program):
         for category in self.categorized_programs:
@@ -513,9 +560,10 @@ class ProgramInstaller:
                 else:
                     webbrowser.open(program_info["url"])
                 
-                if program in self.current_downloads:
-                    self.current_downloads.remove(program)
-                self.process_download_queue()
+                with self.queue_lock:
+                    if program in self.current_downloads:
+                        self.current_downloads.remove(program)
+                    self.process_download_queue()
                 break
 
     def download_selected_programs(self):
@@ -529,8 +577,9 @@ class ProgramInstaller:
         messagebox.showinfo(self.get_text("info"),
                           f"{self.get_text('download_started')}\n{self.download_folder}")
         
-        self.download_queue.extend(selected)
-        self.process_download_queue()
+        with self.queue_lock:
+            self.download_queue.extend(selected)
+            self.process_download_queue()
 
     def get_text(self, key, category=None):
         if category:
