@@ -21,6 +21,7 @@ class ProgramInstaller:
         self.download_folder = str(Path.home() / "Downloads" / "Program_Installer")
         self.icon_cache_folder = os.path.join(self.download_folder, "icons")
         self.icon_cache = {}
+        self.program_vars = {}  # Initialize program_vars dictionary
         
         os.makedirs(self.download_folder, exist_ok=True)
         os.makedirs(self.icon_cache_folder, exist_ok=True)
@@ -32,43 +33,6 @@ class ProgramInstaller:
         self.queue_lock = Lock()  
         
         self.translations = {
-            "tr": {
-                "title": "Program Yükleyici",
-                "select_programs": "İndirmek İstediğiniz Programları Seçin",
-                "download_button": "Seçili Programları İndir",
-                "warning": "Uyarı",
-                "select_warning": "Lütfen en az bir program seçin!",
-                "info": "Bilgi",
-                "download_started": "İndirme işlemi başladı. Dosyalar şu klasöre kaydedilecek:",
-                "download_complete": "İndirme tamamlandı:",
-                "download_error": "İndirme hatası:",
-                "change_language": "Switch to English",
-                "select_all": "Tümünü Seç",
-                "deselect_all": "Tümünü Kaldır",
-                "downloading": "İndiriliyor...",
-                "download_speed": "İndirme Hızı",
-                "remaining_time": "Kalan Süre:",
-                "downloads_list": "İndirilenler Listesi",
-                "status": "Durum",
-                "progress": "İlerleme",
-                "completed": "Tamamlandı",
-                "failed": "Başarısız",
-                "paused": "Duraklatıldı",
-                "clear_completed": "Tamamlananları Temizle",
-                "categories": {
-                    "browsers": "Tarayıcılar",
-                    "communication": "İletişim",
-                    "development": "Geliştirici Araçları",
-                    "multimedia": "Multimedya",
-                    "gaming": "Oyun & Eğlence",
-                    "utilities": "Sistem Araçları",
-                    "security": "Güvenlik"
-                },
-                "installation_status": "Kurulum Durumu",
-                "installing": "Kuruluyor...",
-                "installed": "Kuruldu",
-                "install_failed": "Kurulum Başarısız"
-            },
             "en": {
                 "title": "Program Installer",
                 "select_programs": "Select Programs to Download",
@@ -79,7 +43,7 @@ class ProgramInstaller:
                 "download_started": "Download started. Files will be saved to:",
                 "download_complete": "Download completed:",
                 "download_error": "Download error:",
-                "change_language": "Türkçe'ye Geç",
+                "change_language": "Switch to English",
                 "select_all": "Select All",
                 "deselect_all": "Deselect All",
                 "downloading": "Downloading...",
@@ -98,7 +62,7 @@ class ProgramInstaller:
                     "development": "Development Tools",
                     "multimedia": "Multimedia",
                     "gaming": "Gaming & Entertainment",
-                    "utilities": "System Utilities",
+                    "utilities": "System Tools",
                     "security": "Security"
                 },
                 "installation_status": "Installation Status",
@@ -117,7 +81,7 @@ class ProgramInstaller:
                     "icon_url": "https://raw.githubusercontent.com/alrra/browser-logos/main/src/chrome/chrome.png"
                 },
                 "Mozilla Firefox": {
-                    "url": "https://download.mozilla.org/?product=firefox-latest&os=win64&lang=tr",
+                    "url": "https://download.mozilla.org/?product=firefox-stub&os=win&lang=en-US",
                     "direct_download": True,
                     "filename": "Firefox_Setup.exe",
                     "icon_url": "https://raw.githubusercontent.com/alrra/browser-logos/main/src/firefox/firefox.png"
@@ -127,6 +91,24 @@ class ProgramInstaller:
                     "direct_download": True,
                     "filename": "Brave_Setup.exe",
                     "icon_url": "https://raw.githubusercontent.com/alrra/browser-logos/main/src/brave/brave.png"
+                },
+                "Opera Browser": {
+                    "url": "https://www.opera.com/computer/thanks?ni=stable&os=windows",
+                    "direct_download": True,
+                    "filename": "Opera_Setup.exe",
+                    "icon_url": "https://raw.githubusercontent.com/alrra/browser-logos/main/src/opera/opera.png"
+                },
+                "Microsoft Edge (Windows 10/11)": {
+                    "url": "https://go.microsoft.com/fwlink/?linkid=2108834&Channel=Stable&language=en&brand=M100",
+                    "direct_download": True,
+                    "filename": "Edge_Win10_Setup.exe",
+                    "icon_url": "https://raw.githubusercontent.com/alrra/browser-logos/main/src/edge/edge.png"
+                },
+                "Microsoft Edge (Windows 8.1/8/7)": {
+                    "url": "https://go.microsoft.com/fwlink/?linkid=2108834&Channel=Stable&language=en&Consent=0&brand=M100",
+                    "direct_download": True,
+                    "filename": "Edge_Win8_Setup.exe",
+                    "icon_url": "https://raw.githubusercontent.com/alrra/browser-logos/main/src/edge/edge.png"
                 }
             },
             "utilities": {
@@ -333,18 +315,19 @@ class ProgramInstaller:
         
     def download_file(self, url, filename):
         try:
+            print(f"Downloading file: {url}")  # Debug print
             session = requests.Session()
             response = session.get(url, stream=True)
             response.raise_for_status()
             
             filepath = os.path.join(self.download_folder, filename)
             total_size = int(response.headers.get('content-length', -1))
+            print(f"Total size: {total_size} bytes")  # Debug print
             
             block_size = 1024 * 1024  # 1MB blocks
             downloaded = 0
             start_time = time.time()
             last_update_time = start_time
-            last_downloaded = 0
             
             with open(filepath, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=block_size):
@@ -353,40 +336,28 @@ class ProgramInstaller:
                         downloaded += len(chunk)
                         current_time = time.time()
                         
-                        elapsed = current_time - last_update_time
-                        if elapsed >= 0.5:  # Her 0.5 saniyede bir güncelle
-                            speed = (downloaded - last_downloaded) / (1024 * 1024 * max(elapsed, 0.001))
-                            
+                        if current_time - last_update_time >= 0.5:  # Update every 0.5 seconds
                             if total_size > 0:
-                                progress = (downloaded / total_size * 100)
-                            else:
-                                progress = -1
-                            
-                            display_progress = progress if progress >= 0 else None
-                            program_name = os.path.splitext(filename)[0].replace("_Setup", "")
-                            
-                            self.update_download_progress(
-                                program_name,
-                                self.get_text("downloading"),
-                                display_progress,
-                                speed
-                            )
-                            
+                                progress = (downloaded / total_size) * 100
+                                speed = downloaded / (1024 * 1024 * (current_time - start_time))
+                                print(f"Progress: {progress:.1f}% Speed: {speed:.1f} MB/s")  # Debug print
+                                
+                                program_name = os.path.splitext(filename)[0].replace("_Setup", "")
+                                self.root.after(0, self.update_download_progress,
+                                    program_name,
+                                    self.get_text("downloading"),
+                                    progress,
+                                    speed
+                                )
                             last_update_time = current_time
-                            last_downloaded = downloaded
-                            
-                            self.root.update_idletasks()
             
+            print(f"File downloaded: {filepath}")  # Debug print
             session.close()
             return True, filepath
-        except requests.exceptions.RequestException as e:
-            error_msg = f"Download error: {str(e)}"
-            print(error_msg)
-            return False, error_msg
+            
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
-            print(error_msg)
-            return False, error_msg
+            print(f"Download error: {str(e)}")  # Debug print
+            return False, str(e)
     
     def run_installer(self, filepath, program_name):
         try:
@@ -566,30 +537,41 @@ class ProgramInstaller:
                 threading.Thread(target=self.download_program, args=(program,), daemon=True).start()
 
     def download_program(self, program):
-        for category in self.categorized_programs:
-            if program in self.categorized_programs[category]:
-                program_info = self.categorized_programs[category][program]
-                
-                if program_info["direct_download"]:
-                    success, result = self.download_file(
-                        program_info["url"],
-                        program_info.get("filename", f"{program}_Setup.exe")
-                    )
+        try:
+            print(f"Starting download for: {program}")  # Debug print
+            for category in self.categorized_programs:
+                if program in self.categorized_programs[category]:
+                    program_info = self.categorized_programs[category][program]
+                    print(f"Program info: {program_info}")  # Debug print
                     
-                    if success:
-                        print(f"{self.get_text('download_complete')} {program}")
-                        self.run_installer(result, program)
-                        time.sleep(2)
+                    # Update UI to show download is starting
+                    self.root.after(0, self.update_download_progress, program, self.get_text("downloading"), 0)
+                    
+                    if program_info["direct_download"]:
+                        success, result = self.download_file(
+                            program_info["url"],
+                            program_info.get("filename", f"{program}_Setup.exe")
+                        )
+                        
+                        if success:
+                            print(f"Download completed: {program}")  # Debug print
+                            threading.Thread(target=self.run_installer, args=(result, program), daemon=True).start()
+                        else:
+                            print(f"Download failed: {program} - {result}")  # Debug print
+                            self.root.after(0, self.update_download_progress, program, 
+                                self.get_text("failed"), 0, 0, self.get_text("download_error"))
                     else:
-                        print(f"{self.get_text('download_error')} {program} - {result}")
-                else:
-                    webbrowser.open(program_info["url"])
-                
-                with self.queue_lock:
-                    if program in self.current_downloads:
-                        self.current_downloads.remove(program)
-                    self.process_download_queue()
-                break
+                        webbrowser.open(program_info["url"])
+                    break
+        except Exception as e:
+            print(f"Error downloading {program}: {str(e)}")  # Debug print
+            self.root.after(0, self.update_download_progress, program,
+                self.get_text("failed"), 0, 0, str(e))
+            
+            with self.queue_lock:
+                if program in self.current_downloads:
+                    self.current_downloads.remove(program)
+                self.process_download_queue()
 
     def download_selected_programs(self):
         selected = [prog for prog, var in self.checkboxes.items() if var.get()]
@@ -599,12 +581,19 @@ class ProgramInstaller:
                                  self.get_text("select_warning"))
             return
         
+        print(f"Selected programs: {selected}")  # Debug print
+        
         messagebox.showinfo(self.get_text("info"),
                           f"{self.get_text('download_started')}\n{self.download_folder}")
         
-        with self.queue_lock:
-            self.download_queue.extend(selected)
-            self.process_download_queue()
+        # Start a new thread for download processing
+        download_thread = threading.Thread(target=self.process_selected_downloads, args=(selected,), daemon=True)
+        download_thread.start()
+
+    def process_selected_downloads(self, selected_programs):
+        print(f"Processing downloads: {selected_programs}")  # Debug print
+        for program in selected_programs:
+            self.download_program(program)
 
     def get_text(self, key, category=None):
         if category:
@@ -620,71 +609,29 @@ class ProgramInstaller:
             var.set(False)
             
     def toggle_language(self):
-        self.current_language = "en" if self.current_language == "tr" else "tr"
-        self.root.title(self.get_text("title"))
-        
-        for i, category in enumerate(self.categorized_programs):
-            self.notebook.tab(i, text=self.get_text("categories", category))
-        
-        self.download_button.config(text=self.get_text("download_button"))
-        self.lang_button.config(text=self.get_text("change_language"))
+        # Since we only have English now, this function is no longer needed
+        pass
 
     def create_widgets(self):
-        self.main_frame = ttk.Frame(self.root, padding="10")
-        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Create main frame
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        top_frame = ttk.Frame(self.main_frame)
-        top_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        # Create notebook for categories
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
         
-        title_label = ttk.Label(top_frame, 
-                              text=self.get_text("select_programs"),
-                              font=('Helvetica', 16, 'bold'))
-        title_label.grid(row=0, column=0, pady=10)
-        
-        self.lang_button = ttk.Button(top_frame,
-                                    text=self.get_text("change_language"),
-                                    command=self.toggle_language,
-                                    style="Language.TButton")
-        self.lang_button.grid(row=0, column=1, padx=10)
-        
-        select_all_btn = ttk.Button(top_frame,
-                                  text=self.get_text("select_all"),
-                                  command=self.select_all)
-        select_all_btn.grid(row=0, column=2, padx=5)
-        
-        deselect_all_btn = ttk.Button(top_frame,
-                                    text=self.get_text("deselect_all"),
-                                    command=self.deselect_all)
-        deselect_all_btn.grid(row=0, column=3, padx=5)
-        
-        progress_frame = ttk.Frame(self.main_frame)
-        progress_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=5)
-        
-        self.progress_var = tk.DoubleVar()
-        self.progress = ttk.Progressbar(progress_frame, 
-                                      orient="horizontal",
-                                      length=300,
-                                      mode="determinate",
-                                      variable=self.progress_var)
-        self.progress.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=5)
-        
-        self.speed_label = ttk.Label(progress_frame, text="")
-        self.speed_label.grid(row=1, column=0, sticky=tk.W)
-        
-        self.time_label = ttk.Label(progress_frame, text="")
-        self.time_label.grid(row=2, column=0, sticky=tk.W)
-        
-        self.notebook = ttk.Notebook(self.main_frame)
-        self.notebook.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
-        
-        self.checkboxes = {}
-        self.program_frames = {}
+        # Create category frames
+        self.category_frames = {}
+        self.checkboxes = {}  # Initialize checkboxes dictionary
         
         for category in self.categorized_programs:
-            frame = ttk.Frame(self.notebook, padding="10")
+            frame = ttk.Frame(self.notebook)
             self.notebook.add(frame, text=self.get_text("categories", category))
+            self.category_frames[category] = frame
             
-            canvas = tk.Canvas(frame, width=800)  # Canvas genişliğini ayarla
+            # Create scrollable frame for programs
+            canvas = tk.Canvas(frame)
             scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
             scrollable_frame = ttk.Frame(canvas)
             
@@ -696,86 +643,101 @@ class ProgramInstaller:
             canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
             canvas.configure(yscrollcommand=scrollbar.set)
             
-            for i, (program, info) in enumerate(self.categorized_programs[category].items()):
-                program_frame = ttk.Frame(scrollable_frame)
-                program_frame.grid(row=i, column=0, sticky="w", pady=2)
-                
+            canvas.pack(side="left", fill="both", expand=True)
+            scrollbar.pack(side="right", fill="y")
+            
+            # Add programs to category
+            row = 0
+            for program_name, program_info in self.categorized_programs[category].items():
                 var = tk.BooleanVar()
-                self.checkboxes[program] = var
+                self.checkboxes[program_name] = var
                 
-                # Program ikonu
-                icon = self.load_program_icon(info)
+                frame = ttk.Frame(scrollable_frame)
+                frame.grid(row=row, column=0, sticky="w", pady=2)
+                
+                # Load program icon
+                icon = self.load_program_icon(program_info)
                 if icon:
-                    icon_label = ttk.Label(program_frame, image=icon)
-                    icon_label.image = icon  # Referansı sakla
-                    icon_label.grid(row=0, column=0, padx=(0, 5))
+                    icon_label = ttk.Label(frame, image=icon)
+                    icon_label.image = icon
+                    icon_label.grid(row=0, column=0, padx=5)
                 
-                # Program adı ve durum
-                label_text = f"{program}"
-                checkbox = ttk.Checkbutton(program_frame, text=label_text, variable=var)
-                checkbox.grid(row=0, column=1, sticky="w")
+                ttk.Checkbutton(
+                    frame,
+                    text=program_name,
+                    variable=var,
+                    onvalue=True,
+                    offvalue=False
+                ).grid(row=0, column=1, sticky="w")
                 
-                # İndirme durumu için frame
-                status_frame = ttk.Frame(program_frame)
-                status_frame.grid(row=0, column=2, padx=10)
-                
-                # İndirme durumu etiketi
-                status_label = ttk.Label(status_frame, text="")
-                status_label.grid(row=0, column=0)
-                
-                self.program_frames[program] = {
-                    'frame': program_frame,
-                    'status_label': status_label
-                }
-            
-            canvas.grid(row=0, column=0, sticky="nsew")
-            scrollbar.grid(row=0, column=1, sticky="ns")
-            
-            frame.grid_columnconfigure(0, weight=1)
-            frame.grid_rowconfigure(0, weight=1)
+                row += 1
         
-        self.download_button = ttk.Button(self.main_frame,
-                                        text=self.get_text("download_button"),
-                                        command=self.download_selected_programs,
-                                        style="Download.TButton")
-        self.download_button.grid(row=3, column=0, pady=20)
-
-        # Downloads List Frame
-        downloads_frame = ttk.LabelFrame(self.main_frame, text=self.get_text("downloads_list"))
-        downloads_frame.grid(row=4, column=0, padx=10, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Create buttons frame
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.grid(row=1, column=0, columnspan=2, sticky="e", pady=5)
         
-        # Downloads List
+        # Select All button
+        ttk.Button(
+            buttons_frame,
+            text=self.get_text("select_all"),
+            command=self.select_all
+        ).pack(side="left", padx=5)
+        
+        # Deselect All button
+        ttk.Button(
+            buttons_frame,
+            text=self.get_text("deselect_all"),
+            command=self.deselect_all
+        ).pack(side="left", padx=5)
+        
+        # Download button
+        self.download_button = ttk.Button(
+            buttons_frame,
+            text=self.get_text("download_button"),
+            command=self.download_selected_programs
+        )
+        self.download_button.pack(side="left", padx=5)
+        
+        # Create downloads list
+        downloads_frame = ttk.LabelFrame(main_frame, text=self.get_text("downloads_list"))
+        downloads_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        
+        # Create Treeview for downloads
         self.downloads_tree = ttk.Treeview(downloads_frame, 
-            columns=("program", "status", "progress", "speed", "install_status"), 
+            columns=("program", "status", "progress", "speed", "install_status"),
             show="headings"
         )
+        
+        # Configure columns
         self.downloads_tree.heading("program", text=self.get_text("select_programs"))
         self.downloads_tree.heading("status", text=self.get_text("status"))
         self.downloads_tree.heading("progress", text=self.get_text("progress"))
         self.downloads_tree.heading("speed", text=self.get_text("download_speed"))
         self.downloads_tree.heading("install_status", text=self.get_text("installation_status"))
         
-        # Kolon genişliklerini ayarla
         self.downloads_tree.column("program", width=200)
         self.downloads_tree.column("status", width=100)
         self.downloads_tree.column("progress", width=100)
         self.downloads_tree.column("speed", width=120)
         self.downloads_tree.column("install_status", width=120)
         
-        # Scrollbar for Downloads List
-        scrollbar = ttk.Scrollbar(downloads_frame, orient=tk.VERTICAL, command=self.downloads_tree.yview)
-        self.downloads_tree.configure(yscrollcommand=scrollbar.set)
+        # Add scrollbar to downloads tree
+        downloads_scrollbar = ttk.Scrollbar(downloads_frame, orient=tk.VERTICAL, command=self.downloads_tree.yview)
+        self.downloads_tree.configure(yscrollcommand=downloads_scrollbar.set)
         
         self.downloads_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        downloads_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
         # Configure grid weights
         downloads_frame.grid_columnconfigure(0, weight=1)
         downloads_frame.grid_rowconfigure(0, weight=1)
         
-        # Clear Completed Button
-        clear_btn = ttk.Button(downloads_frame, text=self.get_text("clear_completed"), command=self.clear_completed_downloads)
-        clear_btn.grid(row=1, column=0, columnspan=2, pady=5)
+        # Clear completed downloads button
+        ttk.Button(
+            downloads_frame,
+            text=self.get_text("clear_completed"),
+            command=self.clear_completed_downloads
+        ).grid(row=1, column=0, columnspan=2, pady=5)
 
     def clear_completed_downloads(self):
         for item in self.downloads_tree.get_children():
@@ -783,27 +745,34 @@ class ProgramInstaller:
                 self.downloads_tree.delete(item)
 
     def update_download_progress(self, program_name, status, progress=0, speed=0, install_status=""):
-        # Find if program already exists in the tree
-        for item in self.downloads_tree.get_children():
-            if self.downloads_tree.item(item)["values"][0] == program_name:
-                speed_text = f"{speed:.1f} MB/s" if speed > 0 else ""
-                self.downloads_tree.item(item, values=(
+        try:
+            # Find if program already exists in the tree
+            item_found = False
+            for item in self.downloads_tree.get_children():
+                if self.downloads_tree.item(item)["values"][0] == program_name:
+                    speed_text = f"{speed:.1f} MB/s" if speed > 0 else ""
+                    progress_text = f"{int(progress)}%" if progress >= 0 else ""
+                    self.downloads_tree.item(item, values=(
+                        program_name, 
+                        status, 
+                        progress_text,
+                        speed_text,
+                        install_status
+                    ))
+                    item_found = True
+                    break
+            
+            # If not found, add new entry
+            if not item_found:
+                self.downloads_tree.insert("", tk.END, values=(
                     program_name, 
                     status, 
-                    f"{progress}%",
-                    speed_text,
-                    install_status
+                    "0%",
+                    "",
+                    ""
                 ))
-                return
-        
-        # If not found, add new entry
-        self.downloads_tree.insert("", tk.END, values=(
-            program_name, 
-            status, 
-            f"{progress}%",
-            "",
-            ""
-        ))
+        except Exception as e:
+            print(f"Error updating progress for {program_name}: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
