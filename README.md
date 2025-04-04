@@ -15,7 +15,7 @@ Program Installer is a user-friendly program installation tool developed for Win
 
 ## Installation
 
-1. Download the latest release from the [Releases](https://github.com/Karadumann/program-installer/releases) page
+1. Download the latest release from the [Releases](https://github.com/Karadumann/afterformat/releases/) page
 2. Run the downloaded `program_installer.exe` file
 
 ## Usage
