@@ -15,9 +15,8 @@ Program Installer is a user-friendly program installation tool developed for Win
 
 ## Installation
 
-1. Download the program:
-   - Run `program_installer.exe` from the `dist` folder
-   - To run with Python: `python program_installer.py`
+1. Download the latest release from the [Releases](https://github.com/Karadumann/program-installer/releases) page
+2. Run the downloaded `program_installer.exe` file
 
 ## Usage
 
@@ -79,7 +78,6 @@ Program Installer is a user-friendly program installation tool developed for Win
 ## Requirements
 
 - Windows 7/8/10/11
-- Python 3.13.1 (for running from source)
 - Internet connection
 
 ## Contributing
@@ -98,7 +96,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 For questions or suggestions:
 - GitHub Issues
-- Email: [your email]
+- Email: [info@berkkaraduman.com]
 
 ## Acknowledgments
 
