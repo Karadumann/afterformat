@@ -12,6 +12,7 @@ import time
 from PIL import Image, ImageTk
 from io import BytesIO
 import hashlib
+import sv_ttk
 
 class ProgramInstaller:
     def __init__(self, root):
@@ -21,7 +22,7 @@ class ProgramInstaller:
         self.download_folder = str(Path.home() / "Downloads" / "Program_Installer")
         self.icon_cache_folder = os.path.join(self.download_folder, "icons")
         self.icon_cache = {}
-        self.program_vars = {}  # Initialize program_vars dictionary
+        self.program_vars = {}
         
         os.makedirs(self.download_folder, exist_ok=True)
         os.makedirs(self.icon_cache_folder, exist_ok=True)
@@ -31,6 +32,8 @@ class ProgramInstaller:
         self.current_downloads = []
         self.max_concurrent_downloads = 3
         self.queue_lock = Lock()  
+        
+        sv_ttk.set_theme("dark")  # "light"
         
         self.translations = {
             "en": {
@@ -305,14 +308,134 @@ class ProgramInstaller:
         self.root.title(f"{self.get_text('title')} v{self.version}")
         self.root.geometry("1000x800")
         
-        style = ttk.Style()
-        style.configure("TNotebook", padding=10)
-        style.configure("TNotebook.Tab", padding=[20, 5], font=('Helvetica', 10))
-        style.configure("Download.TButton", padding=10, font=('Helvetica', 11, 'bold'))
-        style.configure("Language.TButton", padding=5)
-        
         self.create_widgets()
+
+    def create_widgets(self):
+        main_frame = ttk.Frame(self.root, padding="20")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
+        
+        self.category_frames = {}
+        self.checkboxes = {}
+        
+        for category in self.categorized_programs:
+            frame = ttk.Frame(self.notebook, padding="10")
+            self.notebook.add(frame, text=self.get_text("categories", category))
+            self.category_frames[category] = frame
+            
+            canvas = tk.Canvas(frame, highlightthickness=0)
+            scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
+            scrollable_frame = ttk.Frame(canvas, padding="5")
+            
+            scrollable_frame.bind(
+                "<Configure>",
+                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
+            
+            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+            
+            canvas.pack(side="left", fill="both", expand=True)
+            scrollbar.pack(side="right", fill="y")
+            
+            row = 0
+            for program_name, program_info in self.categorized_programs[category].items():
+                var = tk.BooleanVar()
+                self.checkboxes[program_name] = var
+                
+                frame = ttk.Frame(scrollable_frame, padding="5")
+                frame.grid(row=row, column=0, sticky="w", pady=2)
+                
+                icon = self.load_program_icon(program_info)
+                if icon:
+                    icon_label = ttk.Label(frame, image=icon)
+                    icon_label.image = icon
+                    icon_label.grid(row=0, column=0, padx=5)
+                
+                ttk.Checkbutton(
+                    frame,
+                    text=program_name,
+                    variable=var,
+                    onvalue=True,
+                    offvalue=False
+                ).grid(row=0, column=1, sticky="w")
+                
+                row += 1
+        
+        # Create buttons frame
+        buttons_frame = ttk.Frame(main_frame, padding="10")
+        buttons_frame.grid(row=1, column=0, columnspan=2, sticky="e", pady=10)
+        
+        # Select All button
+        ttk.Button(
+            buttons_frame,
+            text=self.get_text("select_all"),
+            command=self.select_all
+        ).pack(side="left", padx=5)
+        
+        # Deselect All button
+        ttk.Button(
+            buttons_frame,
+            text=self.get_text("deselect_all"),
+            command=self.deselect_all
+        ).pack(side="left", padx=5)
+        
+        # Download button
+        self.download_button = ttk.Button(
+            buttons_frame,
+            text=self.get_text("download_button"),
+            command=self.download_selected_programs
+        )
+        self.download_button.pack(side="left", padx=5)
+        
+        downloads_frame = ttk.LabelFrame(main_frame, text=self.get_text("downloads_list"), padding="10")
+        downloads_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=10)
+        
+        self.downloads_tree = ttk.Treeview(downloads_frame, 
+            columns=("program", "status", "progress", "speed", "install_status"),
+            show="headings",
+            height=10  
+        )
+        
+        # Configure columns
+        self.downloads_tree.heading("program", text=self.get_text("select_programs"))
+        self.downloads_tree.heading("status", text=self.get_text("status"))
+        self.downloads_tree.heading("progress", text=self.get_text("progress"))
+        self.downloads_tree.heading("speed", text=self.get_text("download_speed"))
+        self.downloads_tree.heading("install_status", text=self.get_text("installation_status"))
+        
+        self.downloads_tree.column("program", width=200)
+        self.downloads_tree.column("status", width=100)
+        self.downloads_tree.column("progress", width=100)
+        self.downloads_tree.column("speed", width=120)
+        self.downloads_tree.column("install_status", width=120)
+        
+        # Add scrollbar to downloads tree
+        downloads_scrollbar = ttk.Scrollbar(downloads_frame, orient=tk.VERTICAL, command=self.downloads_tree.yview)
+        self.downloads_tree.configure(yscrollcommand=downloads_scrollbar.set)
+        
+        self.downloads_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        downloads_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        downloads_frame.grid_columnconfigure(0, weight=1)
+        downloads_frame.grid_rowconfigure(0, weight=1)
+        
+        ttk.Button(
+            downloads_frame,
+            text=self.get_text("clear_completed"),
+            command=self.clear_completed_downloads
+        ).grid(row=1, column=0, columnspan=2, pady=10)
+        
+        self.root.title(f"{self.get_text('title')} v{self.version}")
+        self.root.geometry("1000x800")
+        self.root.minsize(800, 600)
+        
+        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_rowconfigure(0, weight=1)
+        main_frame.grid_rowconfigure(2, weight=1)
+
     def download_file(self, url, filename):
         try:
             print(f"Downloading file: {url}")  # Debug print
@@ -612,133 +735,6 @@ class ProgramInstaller:
         # Since we only have English now, this function is no longer needed
         pass
 
-    def create_widgets(self):
-        # Create main frame
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        
-        # Create notebook for categories
-        self.notebook = ttk.Notebook(main_frame)
-        self.notebook.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
-        
-        # Create category frames
-        self.category_frames = {}
-        self.checkboxes = {}  # Initialize checkboxes dictionary
-        
-        for category in self.categorized_programs:
-            frame = ttk.Frame(self.notebook)
-            self.notebook.add(frame, text=self.get_text("categories", category))
-            self.category_frames[category] = frame
-            
-            # Create scrollable frame for programs
-            canvas = tk.Canvas(frame)
-            scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-            scrollable_frame = ttk.Frame(canvas)
-            
-            scrollable_frame.bind(
-                "<Configure>",
-                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-            )
-            
-            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-            canvas.configure(yscrollcommand=scrollbar.set)
-            
-            canvas.pack(side="left", fill="both", expand=True)
-            scrollbar.pack(side="right", fill="y")
-            
-            # Add programs to category
-            row = 0
-            for program_name, program_info in self.categorized_programs[category].items():
-                var = tk.BooleanVar()
-                self.checkboxes[program_name] = var
-                
-                frame = ttk.Frame(scrollable_frame)
-                frame.grid(row=row, column=0, sticky="w", pady=2)
-                
-                # Load program icon
-                icon = self.load_program_icon(program_info)
-                if icon:
-                    icon_label = ttk.Label(frame, image=icon)
-                    icon_label.image = icon
-                    icon_label.grid(row=0, column=0, padx=5)
-                
-                ttk.Checkbutton(
-                    frame,
-                    text=program_name,
-                    variable=var,
-                    onvalue=True,
-                    offvalue=False
-                ).grid(row=0, column=1, sticky="w")
-                
-                row += 1
-        
-        # Create buttons frame
-        buttons_frame = ttk.Frame(main_frame)
-        buttons_frame.grid(row=1, column=0, columnspan=2, sticky="e", pady=5)
-        
-        # Select All button
-        ttk.Button(
-            buttons_frame,
-            text=self.get_text("select_all"),
-            command=self.select_all
-        ).pack(side="left", padx=5)
-        
-        # Deselect All button
-        ttk.Button(
-            buttons_frame,
-            text=self.get_text("deselect_all"),
-            command=self.deselect_all
-        ).pack(side="left", padx=5)
-        
-        # Download button
-        self.download_button = ttk.Button(
-            buttons_frame,
-            text=self.get_text("download_button"),
-            command=self.download_selected_programs
-        )
-        self.download_button.pack(side="left", padx=5)
-        
-        # Create downloads list
-        downloads_frame = ttk.LabelFrame(main_frame, text=self.get_text("downloads_list"))
-        downloads_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
-        
-        # Create Treeview for downloads
-        self.downloads_tree = ttk.Treeview(downloads_frame, 
-            columns=("program", "status", "progress", "speed", "install_status"),
-            show="headings"
-        )
-        
-        # Configure columns
-        self.downloads_tree.heading("program", text=self.get_text("select_programs"))
-        self.downloads_tree.heading("status", text=self.get_text("status"))
-        self.downloads_tree.heading("progress", text=self.get_text("progress"))
-        self.downloads_tree.heading("speed", text=self.get_text("download_speed"))
-        self.downloads_tree.heading("install_status", text=self.get_text("installation_status"))
-        
-        self.downloads_tree.column("program", width=200)
-        self.downloads_tree.column("status", width=100)
-        self.downloads_tree.column("progress", width=100)
-        self.downloads_tree.column("speed", width=120)
-        self.downloads_tree.column("install_status", width=120)
-        
-        # Add scrollbar to downloads tree
-        downloads_scrollbar = ttk.Scrollbar(downloads_frame, orient=tk.VERTICAL, command=self.downloads_tree.yview)
-        self.downloads_tree.configure(yscrollcommand=downloads_scrollbar.set)
-        
-        self.downloads_tree.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-        downloads_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
-        
-        # Configure grid weights
-        downloads_frame.grid_columnconfigure(0, weight=1)
-        downloads_frame.grid_rowconfigure(0, weight=1)
-        
-        # Clear completed downloads button
-        ttk.Button(
-            downloads_frame,
-            text=self.get_text("clear_completed"),
-            command=self.clear_completed_downloads
-        ).grid(row=1, column=0, columnspan=2, pady=5)
-
     def clear_completed_downloads(self):
         for item in self.downloads_tree.get_children():
             if self.downloads_tree.item(item)["values"][1] == self.get_text("completed"):
@@ -764,13 +760,18 @@ class ProgramInstaller:
             
             # If not found, add new entry
             if not item_found:
+                speed_text = f"{speed:.1f} MB/s" if speed > 0 else ""
+                progress_text = f"{int(progress)}%" if progress >= 0 else ""
                 self.downloads_tree.insert("", tk.END, values=(
                     program_name, 
                     status, 
-                    "0%",
-                    "",
-                    ""
+                    progress_text,
+                    speed_text,
+                    install_status
                 ))
+                
+            self.downloads_tree.see(self.downloads_tree.get_children()[-1])
+            
         except Exception as e:
             print(f"Error updating progress for {program_name}: {str(e)}")
 
